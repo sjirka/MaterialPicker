@@ -1,4 +1,5 @@
 #include "MaterialPickerCtx.h"
+#include "../_library/SCamera.h"
 
 #include <maya\MGlobal.h>
 #include <maya\MFnDependencyNode.h>
@@ -213,17 +214,4 @@ MStatus MaterialPickerCtx::doRelease(MEvent &event){
 	MGlobal::selectCommand(originalSelection, MGlobal::kReplaceList);
 
 	return MS::kSuccess;
-}
-
-MPoint MaterialPickerCtx::closestPoint(MPointArray &cloud, MPoint &toPoint) {
-	MPoint closestPoint;
-	double closestDistance;
-	for (unsigned d = 0; d < cloud.length(); d++) {
-		double distance = (cloud[d] - toPoint).length();
-		if (d == 0 || distance < closestDistance) {
-			closestDistance = distance;
-			closestPoint = cloud[d];
-		}
-	}
-	return closestPoint;
 }

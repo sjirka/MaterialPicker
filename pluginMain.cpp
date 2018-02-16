@@ -10,7 +10,7 @@ MStatus initializePlugin(MObject obj)
 	MStatus status;
 
 	MFnPlugin fnPlugin(obj, "Stepan Jirka", "1.0", "Any");
-
+	
 	status = fnPlugin.registerContextCommand("materialPickerCtx", MaterialPickerCtxCmd::creator);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
