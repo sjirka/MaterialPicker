@@ -21,12 +21,15 @@ public:
 	virtual MStatus doDrag(MEvent &event);
 	virtual MStatus doRelease(MEvent &event);
 
+
 	// VP2
 	virtual MStatus doPress(MEvent &event, MHWRender::MUIDrawManager &drawMgr, const MHWRender::MFrameContext &context);
 	virtual MStatus doDrag(MEvent &event, MHWRender::MUIDrawManager &drawMgr, const MHWRender::MFrameContext &context);
 	virtual MStatus doRelease(MEvent &event, MHWRender::MUIDrawManager &drawMgr, const MHWRender::MFrameContext &context);
 
-private:
 	MObject m_shader;
+private:
+	MString m_helpString;
+	
 };
 

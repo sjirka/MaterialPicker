@@ -18,25 +18,9 @@
 #include <maya\MBoundingBox.h>
 #include <maya\MCursor.h>
 
-#define pickCursor_width 32
-#define pickCursor_height 32
-static unsigned char pickCursor_bits[] = {
-	0xFF, 0xFF, 0x0F, 0x00, 0xFF, 0xFF, 0x7F, 0x00, 0xFF, 0xFF, 0xFF, 0x00,
-	0xFF, 0xFF, 0xFF, 0x03, 0xFF, 0x1F, 0xF8, 0x07, 0xFF, 0x03, 0xC0, 0x0F,
-	0xFF, 0x01, 0x80, 0x1F, 0x7F, 0x00, 0x00, 0x1F, 0x7F, 0x00, 0x00, 0x3E,
-	0x3F, 0x00, 0x00, 0x7C, 0x1F, 0x00, 0x00, 0x7C, 0x1F, 0x00, 0x00, 0x78,
-	0x1F, 0x00, 0x00, 0x78, 0x0F, 0x00, 0x00, 0xF8, 0x0F, 0x00, 0x00, 0xF0,
-	0x0F, 0x00, 0x00, 0xF0, 0x0F, 0x00, 0x00, 0xF0, 0x0F, 0x00, 0x00, 0xF0,
-	0x0F, 0x00, 0x00, 0xF8, 0x1F, 0x00, 0x00, 0x78, 0x1E, 0x00, 0x00, 0x78,
-	0x1E, 0x00, 0x00, 0x7C, 0x3E, 0x00, 0x00, 0x7C, 0x7C, 0x00, 0x00, 0x3E,
-	0x78, 0x00, 0x00, 0x1F, 0xF8, 0x01, 0x80, 0x1F, 0xF0, 0x03, 0xE0, 0x0F,
-	0xE0, 0x3F, 0xFC, 0x07, 0xC0, 0xFF, 0xFF, 0x03, 0x00, 0xFF, 0xFF, 0x00,
-	0x00, 0xFE, 0x7F, 0x00, 0x00, 0xE0, 0x07, 0x00, };
-
-
 MaterialPickerCtx::MaterialPickerCtx(){
 	setTitleString("Material Picker");
-	setImage("eyeDropper.xpm", MPxContext::kImage1);
+	setImage("materialPicker.xpm", MPxContext::kImage1);
 }
 
 MaterialPickerCtx::~MaterialPickerCtx()
@@ -44,17 +28,16 @@ MaterialPickerCtx::~MaterialPickerCtx()
 }
 
 void MaterialPickerCtx::toolOnSetup(MEvent &event) {
-	setHelpString("Pick shader from geometry with left mouse button. Assign stored shader with middle mouse button");
-	
-	MCursor pickCursor(pickCursor_width, pickCursor_height, 1, 1, pickCursor_bits, pickCursor_bits);
-	setCursor(pickCursor);
+	m_helpString = "Pick new shader with left mouse button. Assign it with middle mouse button";
+	setHelpString(m_helpString);
 }
 
 void MaterialPickerCtx::doEnterRegion() {
-	setHelpString("Pick shader from geometry with left mouse button. Assign stored shader with middle mouse button");
+	setHelpString(m_helpString);
 }
 
 void MaterialPickerCtx::toolOffCleanup() {
+
 	MPxContext::toolOffCleanup();
 }
 
@@ -171,37 +154,6 @@ MStatus MaterialPickerCtx::doRelease(MEvent &event){
 
 			int patchIdx = patchId[0] + patchId[1] * fnNurbs.numSpansInU();
 			m_shader = (shIndices[patchIdx] >= 0) ? shaders[shIndices[patchIdx]] : MObject::kNullObj;
-		}
-		/*
-		else if (path.apiType() == MFn::kSubdiv) {
-			// First convert SubD to proxy Mesh
-			MFnSubd fnSubd(path, &status);
-			CHECK_MSTATUS_AND_RETURN_IT(status);
-			MFnMeshData dataCreator;
-			MObject tesselated = dataCreator.create(&status);
-			CHECK_MSTATUS_AND_RETURN_IT(status);
-			tesselated = fnSubd.tesselate(true, 1, 1, tesselated, &status);
-			CHECK_MSTATUS_AND_RETURN_IT(status);
-			MMatrix matrix = path.inclusiveMatrix();
-
-			// Apply world transformations to proxy
-			MFnMesh fnMesh(tesselated, &status);
-			CHECK_MSTATUS_AND_RETURN_IT(status);
-			MPointArray positions;
-			status = fnMesh.getPoints(positions);
-			CHECK_MSTATUS_AND_RETURN_IT(status);
-			for (unsigned int i = 0; i < positions.length(); i++)
-				positions[i] *= matrix;
-			fnMesh.setPoints(positions);
-
-			// Get closest hit on the proxy mesh
-			hit = meshClosestIntersection(tesselated, source, ray, pivot, &status);
-			CHECK_MSTATUS_AND_RETURN_IT(status);
-		}
-		*/
-		if (!m_shader.isNull()) {
-			MFnDependencyNode fnShader(m_shader);
-			MGlobal::displayInfo("store shader:"+fnShader.name());
 		}
 	}
 	else if(event.mouseButton() == MEvent::kMiddleMouse){

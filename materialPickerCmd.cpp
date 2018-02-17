@@ -50,6 +50,8 @@ MStatus MaterialPickerCmd::doIt(const MArgList& argList) {
 			activeCtx = "";
 		}
 	}
+	
+	return MS::kSuccess;
 }
 
 bool MaterialPickerCmd::isUndoable() const {
