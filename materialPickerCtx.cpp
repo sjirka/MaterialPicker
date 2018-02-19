@@ -1,7 +1,6 @@
 #include "MaterialPickerCtx.h"
 #include "../_library/SCamera.h"
 
-#include <maya\MGlobal.h>
 #include <maya\MFnDependencyNode.h>
 #include <maya\MSelectionList.h>
 #include <maya\MItSelectionList.h>
@@ -17,6 +16,7 @@
 #include <maya\MFnTransform.h>
 #include <maya\MBoundingBox.h>
 #include <maya\MCursor.h>
+#include <maya\MRichSelection.h>
 
 MaterialPickerCtx::MaterialPickerCtx(){
 	setTitleString("Material Picker");
@@ -62,6 +62,21 @@ MStatus MaterialPickerCtx::doRelease(MEvent &event, MHWRender::MUIDrawManager &d
 MStatus MaterialPickerCtx::doPress(MEvent &event){
 	MStatus status;
 
+	status = MGlobal::getActiveSelectionList(m_activeList);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	status = MGlobal::getHiliteList(m_hiliteList);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	status = MGlobal::getRichSelection(m_richList, false);
+	m_hasRichSelection = (status == MS::kSuccess) ? true : false;
+	m_selectionMode = MGlobal::selectionMode(&status);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	m_componentMask = MGlobal::componentSelectionMask(&status);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	m_objectMask = MGlobal::objectSelectionMask(&status);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	m_animMask = MGlobal::animSelectionMask(&status);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+
 	return MS::kSuccess;
 }
 
@@ -74,96 +89,112 @@ MStatus MaterialPickerCtx::doDrag(MEvent &event) {
 MStatus MaterialPickerCtx::doRelease(MEvent &event){
 	MStatus status;
 
-	MSelectionList originalSelection;
-	status = MGlobal::getActiveSelectionList(originalSelection, true);
+	status = MGlobal::clearSelectionList();
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	status = MGlobal::setHiliteList(MSelectionList());
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 	
 	// Click select geometry
 	short x, y;
 	event.getPosition(x, y);
-	status = MGlobal::selectFromScreen(x, y, MGlobal::kReplaceList, MGlobal::selectionMethod());
-	CHECK_MSTATUS_AND_RETURN_IT(status);
+	MGlobal::selectFromScreen(x, y, MGlobal::kReplaceList, MGlobal::kSurfaceSelectMethod);
 
 	MSelectionList selection;
-	status = MGlobal::getActiveSelectionList(selection);
-	CHECK_MSTATUS_AND_RETURN_IT(status)
+	MGlobal::getActiveSelectionList(selection);
 
-	if (selection.length() == 0)
-		return MGlobal::selectCommand(originalSelection, MGlobal::kReplaceList);
-
-	MDagPath path;
-	status = selection.getDagPath(0, path);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-	status = path.extendToShapeDirectlyBelow(0);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-
-	if (event.mouseButton()==MEvent::kLeftMouse) {
-		// Get the view based ray
-		MPoint source, pivot;
-		MVector ray;
-		bool hit;
-		M3dView currentView = M3dView::active3dView(&status);
-		CHECK_MSTATUS_AND_RETURN_IT(status);
-		status = currentView.viewToWorld(x, y, source, ray);
+	if (!selection.isEmpty()) {
+		MDagPath path;
+		MObject component;
+		status = selection.getDagPath(0, path, component);
+		CHECK_MSTATUS_AND_RETURN_IT(status)
+		status = path.extendToShape();
 		CHECK_MSTATUS_AND_RETURN_IT(status);
 
-		// Find ray/geometry intersection
-		if (path.apiType() == MFn::kMesh) {
-			MFnMesh fnMesh(path, &status);
+		MGlobal::displayInfo(component.apiTypeStr());
+
+		if (event.mouseButton() == MEvent::kLeftMouse) {
+			// Get the view based ray
+			MPoint source, pivot;
+			MVector ray;
+			bool hit;
+			M3dView currentView = M3dView::active3dView(&status);
 			CHECK_MSTATUS_AND_RETURN_IT(status);
-			MFloatPoint intersectionFloat;
-			MMeshIsectAccelParams accelParams = fnMesh.autoUniformGridParams();
-			int hitFace, hitTriangle;
-			float hitBary1, hitBary2, hitRayParam;
-			hit = fnMesh.closestIntersection(source, ray, NULL, NULL, false, MSpace::kWorld, 99999999.9f, false, &accelParams, intersectionFloat, &hitRayParam, &hitFace, &hitTriangle, &hitBary1, &hitBary2, 0.01f, &status);
+			status = currentView.viewToWorld(x, y, source, ray);
 			CHECK_MSTATUS_AND_RETURN_IT(status);
 
-			MObjectArray shaders;
-			MIntArray shIndices;
-			fnMesh.getConnectedShaders(path.instanceNumber(), shaders, shIndices);
+			// Find ray/geometry intersection
+			if (path.apiType() == MFn::kMesh) {
+				MFnMesh fnMesh(path, &status);
+				CHECK_MSTATUS_AND_RETURN_IT(status);
+				MFloatPoint intersectionFloat;
+				MMeshIsectAccelParams accelParams = fnMesh.autoUniformGridParams();
+				int hitFace, hitTriangle;
+				float hitBary1, hitBary2, hitRayParam;
+				hit = fnMesh.closestIntersection(source, ray, NULL, NULL, false, MSpace::kWorld, 99999999.9f, false, &accelParams, intersectionFloat, &hitRayParam, &hitFace, &hitTriangle, &hitBary1, &hitBary2, 0.01f, &status);
+				CHECK_MSTATUS_AND_RETURN_IT(status);
 
-			m_shader = (shIndices[hitFace] >= 0) ? shaders[shIndices[hitFace]] : MObject::kNullObj;
+				MObjectArray shaders;
+				MIntArray shIndices;
+				fnMesh.getConnectedShaders(path.instanceNumber(), shaders, shIndices);
+
+				m_shader = (shIndices[hitFace] >= 0) ? shaders[shIndices[hitFace]] : MObject::kNullObj;
+			}
+			else if (path.apiType() == MFn::kNurbsSurface) {
+				MFnNurbsSurface fnNurbs(path, &status);
+				CHECK_MSTATUS_AND_RETURN_IT(status);
+
+				// Get nurbs intersections and use the closest
+				double u, v;
+				hit = fnNurbs.intersect(source, ray, u, v, pivot, 0.01, MSpace::kWorld);
+
+				MDoubleArray knotsU, knotsV;
+				fnNurbs.getKnotsInU(knotsU);
+				fnNurbs.getKnotsInV(knotsV);
+
+				int patchId[2] = { 0, 0 };
+				for (unsigned int i = fnNurbs.degreeU() - 1; i < knotsU.length() - fnNurbs.degreeU(); i++)
+					if (u > knotsU[i] && u < knotsU[i + 1]) {
+						patchId[0] = i - fnNurbs.degreeU() + 1;
+						break;
+					}
+				for (unsigned int i = fnNurbs.degreeV() - 1; i < knotsV.length() - fnNurbs.degreeV(); i++)
+					if (v > knotsV[i] && v < knotsV[i + 1]) {
+						patchId[1] = i - fnNurbs.degreeV() + 1;
+						break;
+					}
+
+				MObjectArray shaders;
+				MIntArray shIndices;
+				fnNurbs.getConnectedShaders(path.instanceNumber(), shaders, shIndices);
+
+				int patchIdx = patchId[0] + patchId[1] * fnNurbs.numSpansInU();
+				m_shader = (shIndices[patchIdx] >= 0) ? shaders[shIndices[patchIdx]] : MObject::kNullObj;
+			}
 		}
-		else if (path.apiType() == MFn::kNurbsSurface) {
-			MFnNurbsSurface fnNurbs(path, &status);
-			CHECK_MSTATUS_AND_RETURN_IT(status);
-
-			// Get nurbs intersections and use the closest
-			double u, v;
-			hit = fnNurbs.intersect(source, ray, u, v, pivot, 0.01, MSpace::kWorld);
-
-			MDoubleArray knotsU, knotsV;
-			fnNurbs.getKnotsInU(knotsU);
-			fnNurbs.getKnotsInV(knotsV);
-
-			int patchId[2] = { 0, 0 };
-			for (unsigned int i = fnNurbs.degreeU() - 1; i < knotsU.length() - fnNurbs.degreeU(); i++)
-				if (u > knotsU[i] && u < knotsU[i + 1]) {
-					patchId[0] = i - fnNurbs.degreeU() + 1;
-					break;
-				}
-			for (unsigned int i = fnNurbs.degreeV() - 1; i < knotsV.length() - fnNurbs.degreeV(); i++)
-				if (v > knotsV[i] && v < knotsV[i + 1]) {
-					patchId[1] = i - fnNurbs.degreeV() + 1;
-					break;
-				}
-
-			MObjectArray shaders;
-			MIntArray shIndices;
-			fnNurbs.getConnectedShaders(path.instanceNumber(), shaders, shIndices);
-
-			int patchIdx = patchId[0] + patchId[1] * fnNurbs.numSpansInU();
-			m_shader = (shIndices[patchIdx] >= 0) ? shaders[shIndices[patchIdx]] : MObject::kNullObj;
+		else if (event.mouseButton() == MEvent::kMiddleMouse) {
+			if (!m_shader.isNull()) {
+				MFnDependencyNode fnShader(m_shader);
+				MGlobal::executeCommand("hyperShade -assign " + fnShader.name(), true, true);
+			}
 		}
 	}
-	else if(event.mouseButton() == MEvent::kMiddleMouse){
-		if (!m_shader.isNull()) {
-			MFnDependencyNode fnShader(m_shader);
-			MGlobal::executeCommand("hyperShade -assign " + fnShader.name(), true, true);
-		}
-	}
 
-	MGlobal::selectCommand(originalSelection, MGlobal::kReplaceList);
+	status = MGlobal::setSelectionMode(m_selectionMode);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	status = MGlobal::setComponentSelectionMask(m_componentMask);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	status = MGlobal::setAnimSelectionMask(m_animMask);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	status = MGlobal::setObjectSelectionMask(m_objectMask);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	status = MGlobal::setActiveSelectionList(m_activeList);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	status = MGlobal::setHiliteList(m_hiliteList);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	if (m_hasRichSelection) {
+		status = MGlobal::setRichSelection(m_richList);
+		CHECK_MSTATUS_AND_RETURN_IT(status);
+	}
 
 	return MS::kSuccess;
 }
