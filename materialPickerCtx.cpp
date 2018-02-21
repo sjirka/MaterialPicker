@@ -30,6 +30,7 @@ MaterialPickerCtx::~MaterialPickerCtx()
 void MaterialPickerCtx::toolOnSetup(MEvent &event) {
 	m_helpString = "Pick new shader with left mouse button. Assign it with middle mouse button";
 	setHelpString(m_helpString);
+	//MGlobal::executeCommand("inViewMessage -smg \""+m_helpString+"\" -pos topCenter -fade;");
 }
 
 void MaterialPickerCtx::doEnterRegion() {
@@ -62,19 +63,7 @@ MStatus MaterialPickerCtx::doRelease(MEvent &event, MHWRender::MUIDrawManager &d
 MStatus MaterialPickerCtx::doPress(MEvent &event){
 	MStatus status;
 
-	status = MGlobal::getActiveSelectionList(m_activeList);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-	status = MGlobal::getHiliteList(m_hiliteList);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-	status = MGlobal::getRichSelection(m_richList, false);
-	m_hasRichSelection = (status == MS::kSuccess) ? true : false;
-	m_selectionMode = MGlobal::selectionMode(&status);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-	m_componentMask = MGlobal::componentSelectionMask(&status);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-	m_objectMask = MGlobal::objectSelectionMask(&status);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-	m_animMask = MGlobal::animSelectionMask(&status);
+	status = m_selectionState.storeCurrentSelection();
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	return MS::kSuccess;
@@ -89,8 +78,6 @@ MStatus MaterialPickerCtx::doDrag(MEvent &event) {
 MStatus MaterialPickerCtx::doRelease(MEvent &event){
 	MStatus status;
 
-	status = MGlobal::clearSelectionList();
-	CHECK_MSTATUS_AND_RETURN_IT(status);
 	status = MGlobal::setHiliteList(MSelectionList());
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 	
@@ -104,19 +91,17 @@ MStatus MaterialPickerCtx::doRelease(MEvent &event){
 
 	if (!selection.isEmpty()) {
 		MDagPath path;
-		MObject component;
-		status = selection.getDagPath(0, path, component);
+		status = selection.getDagPath(0, path);
 		CHECK_MSTATUS_AND_RETURN_IT(status)
 		status = path.extendToShape();
 		CHECK_MSTATUS_AND_RETURN_IT(status);
-
-		MGlobal::displayInfo(component.apiTypeStr());
 
 		if (event.mouseButton() == MEvent::kLeftMouse) {
 			// Get the view based ray
 			MPoint source, pivot;
 			MVector ray;
-			bool hit;
+			MObjectArray shaders;
+			MIntArray shIndices;
 			M3dView currentView = M3dView::active3dView(&status);
 			CHECK_MSTATUS_AND_RETURN_IT(status);
 			status = currentView.viewToWorld(x, y, source, ray);
@@ -130,11 +115,9 @@ MStatus MaterialPickerCtx::doRelease(MEvent &event){
 				MMeshIsectAccelParams accelParams = fnMesh.autoUniformGridParams();
 				int hitFace, hitTriangle;
 				float hitBary1, hitBary2, hitRayParam;
-				hit = fnMesh.closestIntersection(source, ray, NULL, NULL, false, MSpace::kWorld, 99999999.9f, false, &accelParams, intersectionFloat, &hitRayParam, &hitFace, &hitTriangle, &hitBary1, &hitBary2, 0.01f, &status);
+				fnMesh.closestIntersection(source, ray, NULL, NULL, false, MSpace::kWorld, 99999999.9f, false, &accelParams, intersectionFloat, &hitRayParam, &hitFace, &hitTriangle, &hitBary1, &hitBary2, 0.01f, &status);
 				CHECK_MSTATUS_AND_RETURN_IT(status);
 
-				MObjectArray shaders;
-				MIntArray shIndices;
 				fnMesh.getConnectedShaders(path.instanceNumber(), shaders, shIndices);
 
 				m_shader = (shIndices[hitFace] >= 0) ? shaders[shIndices[hitFace]] : MObject::kNullObj;
@@ -145,7 +128,7 @@ MStatus MaterialPickerCtx::doRelease(MEvent &event){
 
 				// Get nurbs intersections and use the closest
 				double u, v;
-				hit = fnNurbs.intersect(source, ray, u, v, pivot, 0.01, MSpace::kWorld);
+				fnNurbs.intersect(source, ray, u, v, pivot, 0.01, MSpace::kWorld);
 
 				MDoubleArray knotsU, knotsV;
 				fnNurbs.getKnotsInU(knotsU);
@@ -163,8 +146,6 @@ MStatus MaterialPickerCtx::doRelease(MEvent &event){
 						break;
 					}
 
-				MObjectArray shaders;
-				MIntArray shIndices;
 				fnNurbs.getConnectedShaders(path.instanceNumber(), shaders, shIndices);
 
 				int patchIdx = patchId[0] + patchId[1] * fnNurbs.numSpansInU();
@@ -179,22 +160,8 @@ MStatus MaterialPickerCtx::doRelease(MEvent &event){
 		}
 	}
 
-	status = MGlobal::setSelectionMode(m_selectionMode);
+	status = m_selectionState.restoreSelection();
 	CHECK_MSTATUS_AND_RETURN_IT(status);
-	status = MGlobal::setComponentSelectionMask(m_componentMask);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-	status = MGlobal::setAnimSelectionMask(m_animMask);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-	status = MGlobal::setObjectSelectionMask(m_objectMask);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-	status = MGlobal::setActiveSelectionList(m_activeList);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-	status = MGlobal::setHiliteList(m_hiliteList);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-	if (m_hasRichSelection) {
-		status = MGlobal::setRichSelection(m_richList);
-		CHECK_MSTATUS_AND_RETURN_IT(status);
-	}
 
 	return MS::kSuccess;
 }

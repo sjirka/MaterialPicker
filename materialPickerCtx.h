@@ -5,6 +5,7 @@
 #include <maya\MRichSelection.h>
 #include <maya\MSelectionList.h>
 #include <maya\MGlobal.h>
+#include "../_library/SSelection.h"
 
 class MaterialPickerCtx : public MPxContext
 {
@@ -31,18 +32,6 @@ public:
 private:
 	MString m_helpString;
 	
-	MSelectionList
-		m_activeList,
-		m_hiliteList;
-	MRichSelection
-		m_richList;
-	MGlobal::MSelectionMode
-		m_selectionMode;
-	MSelectionMask
-		m_objectMask,
-		m_componentMask,
-		m_animMask;
-	bool
-		m_hasRichSelection;
+	SSelection m_selectionState;
 };
 
