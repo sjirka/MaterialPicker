@@ -1,0 +1,46 @@
+global proc materialPickerCtxProperties()
+{
+	string $parent = `toolPropertyWindow -q -location`;
+
+	setUITemplate -pushTemplate OptionsTemplate;
+
+	setParent $parent;
+
+	if(`columnLayout -ex materialPickerLayout`)
+		deleteUI -lay materialPickerLayout;
+
+	columnLayout materialPickerLayout;
+		frameLayout -collapsable true -collapse false
+			-label "Material Picker Settings";
+
+				separator -style "none";
+ 				
+ 				float $col = 0.435;
+ 				int $size = 64;
+
+ 				string $form = `formLayout`;
+ 					string $label = `text -l "Active shader:"`;
+    				string $swatch = `swatchDisplayPort -po 0 -rp 3 -rs $size -w $size -h $size -sn initialShadingGroup materialPickerShaderPort`;
+    				string $shName = `text -al "left" -w $size -h 20 -bgc $col $col $col materialPickerShaderName`;
+    			setParent ..;
+
+    			formLayout -e
+	    			-attachForm		$label	"top"	0
+	    			-attachForm		$label	"left"	15
+
+	    			-attachForm		$swatch "top"	0
+	    			-attachControl	$swatch "left"	10	$label
+
+	    			-attachControl	$shName	"top"	5	$swatch
+	    			-attachControl	$shName	"left"	10	$label
+	    			-attachForm		$shName "bottom" 15
+	    			$form;
+
+
+
+
+		setParent ..;
+	setParent ..;
+
+	setUITemplate -popTemplate;
+}

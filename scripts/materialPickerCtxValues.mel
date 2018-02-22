@@ -1,0 +1,22 @@
+global proc materialPickerCtxValues(string $toolName)
+{
+	if(!`columnLayout -ex materialPickerLayout`)
+		return;
+	
+	string $parent = (`toolPropertyWindow -q -location` + "|materialPickerLayout");
+	setParent $parent;
+
+ 	string $storedShader = `materialPickerCtx -q -sh $toolName`;
+
+ 	if($storedShader!="" && `connectionInfo -isDestination ($storedShader + ".surfaceShader")`){
+ 		string $shaderAttr = `connectionInfo -sourceFromDestination ($storedShader+".surfaceShader")`;
+		string $buffer[];
+		tokenize($shaderAttr, ".", $buffer);
+
+    	swatchDisplayPort -e -sn $storedShader materialPickerShaderPort;
+    	text -e -l (" "+$buffer[0]) -ann $buffer[0] materialPickerShaderName;
+ 	}
+
+	toolPropertySelect materialPickerLayout;
+	
+}
