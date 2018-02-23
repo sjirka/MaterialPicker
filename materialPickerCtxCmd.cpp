@@ -1,6 +1,8 @@
 #include "MaterialPickerCtxCmd.h"
 #include <maya\MFnDependencyNode.h>
 
+#include <maya\MToolsInfo.h>
+
 #define SHADER_FLAG "-sh"
 #define SHADER_FLAG_LONG "-shader"
 
@@ -43,6 +45,7 @@ MStatus MaterialPickerCtxCmd::doEditFlags() {
 		argData.getFlagArgument(HELP_FLAG, 0, value);
 		m_context->m_displayHelp = value;
 		MGlobal::setOptionVarValue(helpOptionVar, (value) ? 1 : 0);
+		MToolsInfo::setDirtyFlag(*m_context);
 	}
 
 	return status;
