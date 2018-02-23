@@ -10,10 +10,17 @@ global proc materialPickerCtxProperties()
 		deleteUI -lay materialPickerLayout;
 
 	columnLayout materialPickerLayout;
+
 		frameLayout -collapsable true -collapse false
 			-label "Material Picker Settings";
 
 				separator -style "none";
+
+				checkBoxGrp
+			        -numberOfCheckBoxes 1
+			        -label "Display help message"
+			        -v1 true
+			        materialPickerDisplayHelp;
  				
  				float $col = 0.435;
  				int $size = 64;
@@ -26,7 +33,7 @@ global proc materialPickerCtxProperties()
 
     			formLayout -e
 	    			-attachForm		$label	"top"	0
-	    			-attachForm		$label	"left"	15
+	    			-attachForm		$label	"left"	18
 
 	    			-attachForm		$swatch "top"	0
 	    			-attachControl	$swatch "left"	10	$label

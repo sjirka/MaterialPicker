@@ -4,6 +4,9 @@ global proc materialPickerCtxValues(string $toolName)
 		return;
 	
 	string $parent = (`toolPropertyWindow -q -location` + "|materialPickerLayout");
+	if(!`layout -ex $parent`)
+		return;
+		
 	setParent $parent;
 
  	string $storedShader = `materialPickerCtx -q -sh $toolName`;
@@ -16,6 +19,13 @@ global proc materialPickerCtxValues(string $toolName)
     	swatchDisplayPort -e -sn $storedShader materialPickerShaderPort;
     	text -e -l (" "+$buffer[0]) -ann $buffer[0] materialPickerShaderName;
  	}
+
+	int $helpMessage = `materialPickerCtx -q -hm $toolName`;
+ 	checkBoxGrp -e
+ 		-v1 $helpMessage
+ 		-onc ("materialPickerCtx -e -hm 1 "+$toolName) 
+ 		-ofc ("materialPickerCtx -e -hm 0 "+$toolName) 
+ 		materialPickerDisplayHelp;
 
 	toolPropertySelect materialPickerLayout;
 	
