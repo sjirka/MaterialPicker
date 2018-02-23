@@ -3,21 +3,12 @@
 #include "materialPickerCursor.h"
 
 #include <maya\MFnDependencyNode.h>
-#include <maya\MSelectionList.h>
-#include <maya\MItSelectionList.h>
 #include <maya\MFnMesh.h>
 #include <maya\MFnNurbsSurface.h>
-#include <maya\MFnSubd.h>
-#include <maya\MFnNurbsCurve.h>
 #include <maya\M3dView.h>
-#include <maya\MFnMeshData.h>
 #include <maya\MFnCamera.h>
-#include <maya\MMatrix.h>
-#include <maya\MFnNurbsCurveData.h>
-#include <maya\MFnTransform.h>
-#include <maya\MBoundingBox.h>
 #include <maya\MCursor.h>
-#include <maya\MRichSelection.h>
+#include <maya\MToolsInfo.h>
 
 #define helpString "Pick shader from geometry with left mouse button. Assign picked shader with middle mouse button"
 
@@ -191,7 +182,7 @@ MStatus MaterialPickerCtx::doRelease(MEvent &event){
 	
 	if (event.mouseButton() == MEvent::kLeftMouse && !m_shaderTemp.isNull()) {
 		m_shader = m_shaderTemp;
-		MGlobal::executeCommand("materialPickerCtxValues (`currentCtx`);");
+		MToolsInfo::setDirtyFlag(*this);
 	}
 	else if (event.mouseButton() == MEvent::kMiddleMouse) {
 		if (!m_shader.isNull()) {
