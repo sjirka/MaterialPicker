@@ -7,6 +7,8 @@
 #include <maya\MGlobal.h>
 #include "../_library/SSelection.h"
 
+#define helpOptionVar "materialPickerDisplayHelp"
+
 class MaterialPickerCtx : public MPxContext
 {
 public:
@@ -28,10 +30,12 @@ public:
 	virtual MStatus doDrag(MEvent &event, MHWRender::MUIDrawManager &drawMgr, const MHWRender::MFrameContext &context);
 	virtual MStatus doRelease(MEvent &event, MHWRender::MUIDrawManager &drawMgr, const MHWRender::MFrameContext &context);
 
-	MObject m_shader;
+	MObject
+		m_shader,
+		m_shaderTemp;
+	bool m_displayHelp;
 private:
-	MString m_helpString;
-	
 	SSelection m_selectionState;
+	MSelectionList m_activeSelection;
 };
 

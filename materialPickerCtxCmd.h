@@ -4,9 +4,6 @@
 
 #include <maya\MPxContextCommand.h>
 
-#define SHADER_FLAG "-sh"
-#define SHADER_FLAG_LONG "-shader"
-
 class MaterialPickerCtxCmd : public MPxContextCommand
 {
 public:
@@ -17,6 +14,7 @@ public:
 	virtual MPxContext* makeObj();
 
 	virtual MStatus doQueryFlags();
+	virtual MStatus doEditFlags();
 	virtual MStatus appendSyntax();
 
 private:
