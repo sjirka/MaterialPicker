@@ -35,7 +35,7 @@ void MaterialPickerCtx::toolOnSetup(MEvent &event) {
 	setHelpString(helpString);
 
 	if (m_displayHelp)
-		MGlobal::executeCommand("inViewMessage -fst 4000 -smg \"Pick shader from geometry with <span style = 'color:#F4FA58;'>left mouse button</span>. Assign picked shader with <span style='color:#F4FA58;'>middle mouse button</span>\" -pos topCenter -fade;");
+		MGlobal::executeCommand("inViewMessage -fst 5000 -smg \"Pick shader from geometry with <span style = 'color:#F4FA58;'>left mouse button</span>. Assign picked shader with <span style='color:#F4FA58;'>middle mouse button</span>. Duplicate and assign picked shader with <span style='color:#F4FA58;'>ctrl + middle mouse button</span>\" -pos topCenter -fade;");
 }
 
 void MaterialPickerCtx::doEnterRegion() {
@@ -72,7 +72,11 @@ MStatus MaterialPickerCtx::doPress(MEvent &event){
 		materialPicker_height,
 		materialPicker_x_hot,
 		materialPicker_y_hot,
-		(event.mouseButton() == MEvent::kMiddleMouse) ? materialPicker_empty_bits : materialPicker_full_bits,
+		(event.mouseButton() == MEvent::kMiddleMouse) ?
+			((event.modifiers() == MEvent::controlKey) ? materialPickerAdd_bits : materialPicker_empty_bits) :
+			materialPicker_full_bits,
+		(event.modifiers() == MEvent::controlKey) ?
+		materialPickerAdd_transp_bits :
 		materialPicker_transp_bits);
 	setCursor(materialPickerCursor);
 
@@ -85,8 +89,7 @@ MStatus MaterialPickerCtx::doPress(MEvent &event){
 	// Click select geometry
 	short x, y;
 	event.getPosition(x, y);
-	MGlobal::selectFromScreen(x, y, MGlobal::kReplaceList, MGlobal::selectionMethod());
-
+	MGlobal::selectFromScreen(x, y, MGlobal::kReplaceList, MGlobal::kSurfaceSelectMethod);
 	MGlobal::getActiveSelectionList(m_activeSelection);
 
 	status = m_selectionState.restoreSelection();
@@ -104,10 +107,13 @@ MStatus MaterialPickerCtx::doDrag(MEvent &event) {
 	m_shaderTemp = MObject::kNullObj;
 
 	MDagPath path;
-	status = m_activeSelection.getDagPath(0, path);
+	MObject component;
+	status = m_activeSelection.getDagPath(0, path, component);
 	CHECK_MSTATUS_AND_RETURN_IT(status)
 	status = path.extendToShape();
 	CHECK_MSTATUS_AND_RETURN_IT(status);
+
+	//MGlobal::displayInfo(component.apiTypeStr());
 
 	// Get the view based ray
 	short x, y;
@@ -195,7 +201,15 @@ MStatus MaterialPickerCtx::doRelease(MEvent &event){
 
 			if (!selection.isEmpty()) {
 				MFnDependencyNode fnShader(m_shader);
-				MGlobal::executeCommand("hyperShade -assign " + fnShader.name(), true, true);
+				MString shaderName = fnShader.name();
+
+				if (event.modifiers() == MEvent::controlKey) {
+					MStringArray result;
+					MGlobal::executeCommand("duplicate -upstreamNodes "+shaderName, result, true, true);
+					shaderName = result[0];
+				}
+
+				MGlobal::executeCommand("hyperShade -assign " + shaderName, true, true);
 			}
 
 			status = m_selectionState.restoreSelection();
