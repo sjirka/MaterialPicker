@@ -24,8 +24,17 @@
     <ClInclude Include="materialPickerCtxCmd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\_library\SSelection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="materialPickerCursor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="pluginMain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="materialPickerCmd.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -33,9 +42,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="materialPickerCtxCmd.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="pluginMain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
